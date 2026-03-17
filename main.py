@@ -85,13 +85,20 @@ def spread_to_moneyline(spread):
     k = 0.185 for the NBA, flatter than NFL's 0.22
 
     Implied probability: P = 1 / (1 + e^(-k * spread))
-    Favorite odds: -(p / (1-p)) * 100
-    Underdog odds: ((1-p) / p) * 100
+    Favorite odds: -(probability / (1 - probability)) * 100
+    Underdog odds: ((1 - probability) / probability) * 100
     """
 
     k = 0.185 
     home_probability = 1 / (1 + math.exp(-k * spread))
     away_probability = 1 - home_probability
+
+    def to_moneyline(probability):
+        if probability >= 0.5: # greater than 50%
+            return -round((probability / (1 - probability)) * 100) # negative odds for favorites
+        else:
+            return +round(((1 - probability) / probability) * 100) # positive odds for underdogs
+
 
 
 home_team = TEAMS["BOS"]
