@@ -45,7 +45,7 @@ def team_power_rating(team):
     win_percentage = team["wins"] / games_played
     point_differential = team["ppg"] - team ["oppg"]
     streak = sum(team["last5"]) / 5 
-    return (win_percentage * 15) + (point_differential * 0.05) + (streak * 1.2) # win percentage is weighed more
+    return (win_percentage * 5.0) + (point_differential * 0.14) + (streak * 0.65)
 
 def away_factor(team):
     """
