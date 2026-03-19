@@ -9,7 +9,7 @@ import math
 TEAMS = {
     "OKC": {"name": "Oklahoma City Thunder", "wins": 51, "losses": 15, "ppg": 120.4, "oppg": 108.1, "home_plusminus": 14.8, "road_plusminus": 9.6,  "last5": [1,1,1,1,0]},
     "SAS": {"name": "San Antonio Spurs", "wins": 48, "losses": 17, "ppg": 118.2, "oppg": 110.3, "home_plusminus": 12.4, "road_plusminus": 6.8,  "last5": [1,1,1,0,1]},
-    "DET": {"name": "Detroit Pistons", "wins": 46, "losses": 18, "ppg": 116.8, "oppg": 109.5, "home_plusminus": 11.9, "road_plusminus": 5.4,  "last5": [1,1,0,1,1]},
+    "DET": {"name": "Detroit Pistons", "wins": 46, "losses": 18, "ppg": 116.8, "oppg": 109.5, "home_plusminus": 11.9, "road_plusminus": 5.4,  "last5": [1,1,1,1,1]},
     "BOS": {"name": "Boston Celtics", "wins": 43, "losses": 22, "ppg": 119.5, "oppg": 112.4, "home_plusminus": 10.2, "road_plusminus": 5.8,  "last5": [0,1,0,1,0]},
     "NYK": {"name": "New York Knicks", "wins": 42, "losses": 25, "ppg": 114.7, "oppg": 109.8, "home_plusminus": 8.4,  "road_plusminus": 2.6,  "last5": [0,1,1,0,1]},
     "LAL": {"name": "Los Angeles Lakers", "wins": 40, "losses": 25, "ppg": 115.6, "oppg": 111.2, "home_plusminus": 7.8,  "road_plusminus": 3.1,  "last5": [1,1,0,1,1]},
@@ -45,8 +45,7 @@ def team_power_rating(team):
     win_percentage = team["wins"] / games_played
     point_differential = team["ppg"] - team ["oppg"]
     streak = sum(team["last5"]) / 5 
-    # strength of schedule matters for win percentage, therefore it is weighed less.
-    return (win_percentage * 30) + (point_differential * 1.2) + (streak * 12) # win percentage is weighed more
+    return (win_percentage * 15) + (point_differential * 0.05) + (streak * 1.2) # win percentage is weighed more
 
 def away_factor(team):
     """
@@ -82,14 +81,14 @@ def calc_spread(home_team, away_team):
 def spread_to_moneyline(spread):
     """
     Creating ***FAKE*** American moneyline odds from the spread
-    k = 0.185 for the NBA, flatter than NFL's 0.22
+    k = 0.04
 
     Implied probability: P = 1 / (1 + e^(-k * spread))
     Favorite odds: -(probability / (1 - probability)) * 100
     Underdog odds: ((1 - probability) / probability) * 100
     """
 
-    k = 0.185 
+    k = 0.04  # Keep as float, NOT int
     home_probability = 1 / (1 + math.exp(-k * spread))
     away_probability = 1 - home_probability
 
@@ -99,9 +98,62 @@ def spread_to_moneyline(spread):
         else:
             return +round(((1 - probability) / probability) * 100) # positive odds for underdogs
 
+    return {
+        "home_ml": to_moneyline(home_probability),
+        "away_ml": to_moneyline(away_probability),
+        "home_prob": round(home_probability * 100, 1),
+        "away_prob": round(away_probability * 100, 1),
+    }
+
+def print_result(home_team, away_team): 
+    home = TEAMS[home_team]
+    away = TEAMS[away_team]
+    spread, home_rating, away_rating, hca, raw = calc_spread(home, away)
+    odds = spread_to_moneyline(spread)
+
+    print(f"{home['name']} vs. {away['name']}")
+    print(f"Spread: {spread}")
+    print(f"Home Moneyline ({home['name']}): {odds['home_ml']}")
+    print(f"Away Moneyline ({away['name']}): {odds['away_ml']}")
+    print(f"Odds: {home['name']} {odds['home_prob']}% | {away['name']} {odds['away_prob']}%")
+
+class Candy: 
+    def __init__(self, starting_candies = 1000): 
+        self.balance = starting_candies
+        self.total_won = 0
+        self.total_lost = 0
+
+    def place_bet(self, amount, odds, bet_amount, team_name, won=None): 
+        if bet_amount > self.balance:
+            return "Not enough candies to place bet, try again"
+        self.balance -= bet_amount
+        bet = {
+            "team" : team_name, 
+
+        }
+
+def main():
+    
+    while True:
+        print("1. Pick your own matchup")
+        print("2. Quick example (BOS vs. NYK)")
+        print("3. Exit")
+        choice = input("Pick a number 1-3: ")
+
+        if choice == "1": 
+            home_team = "BKN"
+            away_team = "BOS"
+            print_result(home_team, away_team)
+
+if __name__ == "__main__":
+    main()
+
+    
+    
 
 
-home_team = TEAMS["BOS"]
-away_team = TEAMS["DEN"]
-print(calc_spread(home_team, away_team))
 
+
+
+
+    
