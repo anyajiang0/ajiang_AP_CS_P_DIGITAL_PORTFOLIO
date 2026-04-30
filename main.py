@@ -10,7 +10,6 @@ TEAMS = {
     "OKC": {"name": "Oklahoma City Thunder", "wins": 51, "losses": 15, "ppg": 120.4, "oppg": 108.1, "home_plusminus": 14.8, "road_plusminus": 9.6,  "last5": [1,1,1,1,0]},
     "SAS": {"name": "San Antonio Spurs", "wins": 48, "losses": 17, "ppg": 118.2, "oppg": 110.3, "home_plusminus": 12.4, "road_plusminus": 6.8,  "last5": [1,1,1,0,1]},
     "DET": {"name": "Detroit Pistons", "wins": 46, "losses": 18, "ppg": 116.8, "oppg": 109.5, "home_plusminus": 11.9, "road_plusminus": 5.4,  "last5": [1,1,1,1,1]},
-import random
     "BOS": {"name": "Boston Celtics", "wins": 43, "losses": 22, "ppg": 119.5, "oppg": 112.4, "home_plusminus": 10.2, "road_plusminus": 5.8,  "last5": [0,1,0,1,0]},
     "NYK": {"name": "New York Knicks", "wins": 42, "losses": 25, "ppg": 114.7, "oppg": 109.8, "home_plusminus": 8.4,  "road_plusminus": 2.6,  "last5": [0,1,1,0,1]},
     "LAL": {"name": "Los Angeles Lakers", "wins": 40, "losses": 25, "ppg": 115.6, "oppg": 111.2, "home_plusminus": 7.8,  "road_plusminus": 3.1,  "last5": [1,1,0,1,1]},
@@ -46,9 +45,7 @@ def team_power_rating(team):
     win_percentage = team["wins"] / games_played
     point_differential = team["ppg"] - team ["oppg"]
     streak = sum(team["last5"]) / 5 
-    # Use the same scale as away_rating so home and away ratings are comparable.
-    # win% weighted heavily, point differential scaled, and recent form included.
-    return (win_percentage * 30) + (point_differential * 1.5) + (streak * 15)
+    return (win_percentage * 20) + (point_differential * 1.1) + (streak * 5) # determined through guess and check to balance the teams so that the spread is not an unrealistic number.
 
 def away_factor(team):
     """
@@ -59,19 +56,20 @@ def away_factor(team):
     """
     overall_difference = team["ppg"] - team["oppg"]
     if abs(overall_difference) < 0.5:
-        return 1.0 # neutral, no meaningful adjustment
+        return 1.0
     else:
         return max(0.5, min(1.5, team["road_plusminus"] / overall_difference))
     
 def away_rating(team):
+
     games_played = team["wins"] + team["losses"]
     win_percentage = team["wins"] / games_played
     point_differential = team["ppg"] - team ["oppg"]
     streak = sum(team["last5"]) / 5
     road_adjustment = away_factor(team)
-    return ((win_percentage * 30) + (point_differential * road_adjustment * 1.5) + (streak * 15))
+    return ((win_percentage * 20) + (point_differential * road_adjustment * 1.1) + (streak * 5))
 
-home_court_advantage = 3.0
+home_court_advantage = 3.0 # bonus 3 points for the home team. 
 
 def calc_spread(home_team, away_team):
     home_rating = team_power_rating(home_team)
@@ -92,83 +90,6 @@ def spread_to_moneyline(spread):
     """
 
     k = 0.04  # Keep as float, NOT int
-class CandyWallet:
-    """Simple candy wallet to place and resolve bets."""
-    def __init__(self, starting_candies=1000):
-        self.balance = int(starting_candies)
-        self.history = []
-
-    def _compute_winnings(self, amount, odds):
-        # odds: American
-        if odds >= 0:
-            return amount * (odds / 100.0)
-        else:
-            return amount * (100.0 / -odds)
-
-    def place_and_resolve(self, home_abbr, away_abbr, bet_on, amount):
-        """Place a bet on a matchup and immediately resolve it by simulation.
-
-        bet_on: 'home' or 'away'
-        amount: integer candies to wager
-        Returns a dict with result and updated balance.
-        """
-        amount = int(amount)
-        if amount <= 0:
-            return {"error": "Bet amount must be positive"}
-        if amount > self.balance:
-            return {"error": f"Insufficient candies (balance={self.balance})"}
-
-        # compute spread and odds
-        home = TEAMS.get(home_abbr)
-        away = TEAMS.get(away_abbr)
-        if home is None or away is None:
-            return {"error": "Invalid team abbreviation"}
-
-        spread, _, _, _, _ = calc_spread(home, away)
-        odds = spread_to_moneyline(spread)
-        home_ml = odds["home_ml"]
-        away_ml = odds["away_ml"]
-        home_prob = odds["home_prob"] / 100.0
-
-        # deduct stake
-        self.balance -= amount
-
-        # determine win probability for the selection
-        if bet_on == "home":
-            win_prob = home_prob
-            chosen_ml = home_ml
-            chosen_name = home["name"]
-        else:
-            win_prob = 1.0 - home_prob
-            chosen_ml = away_ml
-            chosen_name = away["name"]
-
-        # simulate outcome
-        rnd = random.random()
-        won = rnd < win_prob
-
-        winnings = 0
-        if won:
-            winnings = int(round(self._compute_winnings(amount, chosen_ml)))
-            # return stake + winnings
-            self.balance += amount + winnings
-        # if lost, stake already deducted
-
-        record = {
-            "home": home_abbr,
-            "away": away_abbr,
-            "bet_on": bet_on,
-            "stake": amount,
-            "odds": chosen_ml,
-            "win_prob": round(win_prob, 4),
-            "random_draw": round(rnd, 4),
-            "won": won,
-            "payout": winnings,
-            "balance": self.balance,
-        }
-        self.history.append(record)
-        return record
-
     home_probability = 1 / (1 + math.exp(-k * spread))
     away_probability = 1 - home_probability
 
@@ -188,29 +109,13 @@ class CandyWallet:
 def print_result(home_team, away_team): 
     home = TEAMS[home_team]
     away = TEAMS[away_team]
-    spread, home_rating, away_rating, hca, raw = calc_spread(home, away)
+    spread, home_rating_val, away_rating_val, hca, raw = calc_spread(home, away)
     odds = spread_to_moneyline(spread)
-
     print(f"{home['name']} vs. {away['name']}")
     print(f"Spread: {spread}")
     print(f"Home Moneyline ({home['name']}): {odds['home_ml']}")
     print(f"Away Moneyline ({away['name']}): {odds['away_ml']}")
     print(f"Odds: {home['name']} {odds['home_prob']}% | {away['name']} {odds['away_prob']}%")
-
-class Candy: 
-    def __init__(self, starting_candies = 1000): 
-        self.balance = starting_candies
-        self.total_won = 0
-        self.total_lost = 0
-
-    def place_bet(self, amount, odds, bet_amount, team_name, won=None): 
-        if bet_amount > self.balance:
-            return "Not enough candies to place bet, try again"
-        self.balance -= bet_amount
-        bet = {
-            "team" : team_name, 
-
-        }
 
 def main():
     
